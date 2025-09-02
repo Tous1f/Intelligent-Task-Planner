@@ -1,0 +1,177 @@
+// Clean Prisma Schema for Intelligent Task Planner
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["public"]
+}
+
+model Profile {
+  id              String   @id @default(uuid())
+  email           String?  @unique
+  displayName     String?  @map("display_name")
+  avatarUrl       String?  @map("avatar_url")
+  preferences     Json     @default("{}") @db.JsonB
+  studyGoals      Json     @default("{}") @map("study_goals") @db.JsonB
+  timezone        String   @default("UTC")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  tasks           Task[]
+  schedules       Schedule[]
+  userBehavior    UserBehavior[]
+  aiInsights      AiInsight[]
+  studySessions   StudySession[]
+  flashcards      Flashcard[]
+  calendarEvents  CalendarEvent[]
+
+  @@map("profiles")
+  @@schema("public")
+}
+
+model Task {
+  id                String    @id @default(uuid())
+  profileId         String    @map("profile_id")
+  title             String
+  description       String?
+  dueDate          DateTime? @map("due_date")
+  priority          Int       @default(3)
+  estimatedDuration Int?      @map("estimated_duration")
+  actualDuration    Int?      @map("actual_duration")
+  status            String    @default("pending")
+  category          String?
+  tags              String[]
+  dependencies      String[]
+  aiSuggestions     Json      @default("{}") @db.JsonB
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  completedAt       DateTime? @map("completed_at")
+
+  // Relations
+  profile           Profile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  schedules         Schedule[]
+  studySessions     StudySession[]
+  calendarEvents    CalendarEvent[]
+
+  @@map("tasks")
+  @@schema("public")
+}
+
+model Schedule {
+  id              String   @id @default(uuid())
+  profileId       String   @map("profile_id")
+  taskId          String   @map("task_id")
+  scheduledStart  DateTime @map("scheduled_start")
+  scheduledEnd    DateTime @map("scheduled_end")
+  actualStart     DateTime? @map("actual_start")
+  actualEnd       DateTime? @map("actual_end")
+  aiConfidence    Float?   @map("ai_confidence")
+  scheduleType    String   @default("ai_generated") @map("schedule_type")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  profile         Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  task            Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("schedules")
+  @@schema("public")
+}
+
+model UserBehavior {
+  id                String   @id @default(uuid())
+  profileId         String   @map("profile_id")
+  actionType        String   @map("action_type")
+  contextData       Json     @db.JsonB
+  timestamp         DateTime @default(now())
+  sessionId         String?  @map("session_id")
+  productivityScore Float?   @map("productivity_score")
+
+  // Relations
+  profile           Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("user_behavior")
+  @@schema("public")
+}
+
+model AiInsight {
+  id              String    @id @default(uuid())
+  profileId       String    @map("profile_id")
+  insightType     String    @map("insight_type")
+  insightData     Json      @db.JsonB
+  confidenceLevel Float?    @map("confidence_level")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  expiresAt       DateTime? @map("expires_at")
+
+  // Relations
+  profile         Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("ai_insights")
+  @@schema("public")
+}
+
+model StudySession {
+  id                 String    @id @default(uuid())
+  profileId          String    @map("profile_id")
+  taskId             String    @map("task_id")
+  sessionType        String    @default("pomodoro") @map("session_type")
+  plannedDuration    Int       @map("planned_duration")
+  actualDuration     Int?      @map("actual_duration")
+  interruptions      Int       @default(0)
+  productivityRating Int?      @map("productivity_rating")
+  startedAt          DateTime  @default(now()) @map("started_at")
+  completedAt        DateTime? @map("completed_at")
+
+  // Relations
+  profile            Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  task               Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("study_sessions")
+  @@schema("public")
+}
+
+model Flashcard {
+  id              String   @id @default(uuid())
+  profileId       String   @map("profile_id")
+  deckName        String   @map("deck_name")
+  frontContent    String   @map("front_content")
+  backContent     String   @map("back_content")
+  difficulty      Int      @default(1)
+  nextReview      DateTime @default(now()) @map("next_review")
+  reviewCount     Int      @default(0) @map("review_count")
+  successRate     Float    @default(0.0) @map("success_rate")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  profile         Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@map("flashcards")
+  @@schema("public")
+}
+
+model CalendarEvent {
+  id              String    @id @default(uuid())
+  profileId       String    @map("profile_id")
+  googleEventId   String?   @unique @map("google_event_id")
+  taskId          String?   @map("task_id")
+  title           String
+  description     String?
+  startTime       DateTime  @map("start_time")
+  endTime         DateTime  @map("end_time")
+  isSynced        Boolean   @default(false) @map("is_synced")
+  syncStatus      String    @default("pending") @map("sync_status")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  profile         Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  task            Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@map("calendar_events")
+  @@schema("public")
+}
