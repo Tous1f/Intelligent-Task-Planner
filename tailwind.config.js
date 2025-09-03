@@ -6,17 +6,18 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        /* Primary Lavender Palette */
         lavender: {
-          50: '#F5F0FF',
-          100: '#EDEDFA',
-          200: '#DFD8F9',
-          300: '#D9C2EA',
-          400: '#C884F7',
-          500: '#A76EEE',
-          600: '#9155DD',
-          700: '#7C3AED',
-          800: '#6B46C1',
-          900: '#553CDA',
+          50: '#F5F0FF',  // Lightest background
+          100: '#EDEDFA', // Light background
+          200: '#DFD8F9', // Border colors
+          300: '#D9C2EA', // Muted elements
+          400: '#C884F7', // Icons, accent
+          500: '#A76EEE', // Primary buttons
+          600: '#9155DD', // Hover states
+          700: '#7C3AED', // Dark text
+          800: '#6B46C1', // Darker elements
+          900: '#553CDA', // Darkest text
         },
         sage: {
           50: '#F0F9F4',

@@ -1,52 +1,28 @@
+// src/app/api/auth/signup/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { prisma } from '@/lib/prisma'
+import { z } from 'zod'
+
+const signupSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+})
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('🚀 Signup API called')
-    
     const body = await request.json()
-    console.log('📝 Request body parsed:', { email: body.email, hasName: !!body.name })
-    
-    const { email, name, password } = body
-
-    // Input validation
-    if (!email || !password || !name) {
-      return NextResponse.json(
-        { error: 'All fields are required' },
-        { status: 400 }
-      )
-    }
-
-    if (password.length < 6) {
-      return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
-        { status: 400 }
-      )
-    }
-
-    // Email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: 'Invalid email format' },
-        { status: 400 }
-      )
-    }
-
-    console.log('🔍 About to check existing user')
+    const { name, email, password } = signupSchema.parse(body)
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email }
     })
 
-    console.log('✅ Existing user check complete:', !!existingUser)
-
     if (existingUser) {
       return NextResponse.json(
-        { error: 'User already exists with this email' },
+        { error: 'User with this email already exists' },
         { status: 409 }
       )
     }
@@ -54,66 +30,51 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Create user in transaction to ensure consistency
-    const result = await prisma.$transaction(async (tx) => {
-      // Create user
-      const user = await tx.user.create({
-        data: {
-          email,
-          name,
-          password: hashedPassword,
-        },
-      })
-
-      // Create associated profile
-      const profile = await tx.profile.create({
-        data: {
-          userId: user.id,
-          email: user.email,
-          displayName: user.name,
-          preferences: {}
+    // Create user and profile
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        profile: {
+          create: {
+            timezone: 'America/New_York', // Default timezone
+            studyPreferences: {
+              pomodoroLength: 25,
+              shortBreakLength: 5,
+              longBreakLength: 15,
+              autoStartBreaks: false,
+              autoStartPomodoros: false,
+              longBreakInterval: 4
+            }
+          }
         }
-      })
-
-      return { user, profile }
+      },
+      include: {
+        profile: true
+      }
     })
 
-    console.log('🎉 User and profile created successfully:', result.user.id)
+    // Remove password from response
+    const { password: _, ...userWithoutPassword } = user
 
-    return NextResponse.json(
-      { 
-        success: true,
-        user: { 
-          id: result.user.id, 
-          email: result.user.email,
-          name: result.user.name
-        },
-        message: 'Account created successfully!'
-      },
-      { status: 201 }
-    )
+    return NextResponse.json({
+      message: 'Account created successfully! You can now sign in.',
+      user: userWithoutPassword
+    })
 
   } catch (error) {
-    console.error('❌ Signup error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-      code: error.code
-    })
+    console.error('Signup error:', error)
     
-    // Handle specific Prisma errors
-    if (error.code === 'P2002') {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Email already exists' },
-        { status: 409 }
+        { error: error.errors[0].message },
+        { status: 400 }
       )
     }
 
     return NextResponse.json(
-      { 
-        error: 'Internal server error',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
