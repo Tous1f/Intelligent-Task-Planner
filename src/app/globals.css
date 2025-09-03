@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Poppins:wght@600;700&family=JetBrains+Mono&display=swap');
+
+html {
+  scroll-behavior: smooth;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #F5F0FF; /* lavender-50 */
+  color: #3E2772;       /* lavender-950 */
+}
+body {
+  margin: 0;
+  padding: 0;
+  overscroll-behavior: none;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Poppins', serif;
+  font-weight: 600;
+  color: #A76EEE; /* lavender-500 */
+  margin: 0;
+}
+
+a {
+  color: #A76EEE;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+a:hover {
+  color: #7C3AED; /* lavender-700 */
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #EDEDFA; /* lavender-100 */
+}
+::-webkit-scrollbar-thumb {
+  background: #A76EEE; /* lavender-500 */
+  border-radius: 20px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #7C3AED; /* lavender-700 */
+}
+
+/* Selection */
+::selection {
+  background: #C884F7; /* lavender-400 */
+  color: white;
+}
+
+/* Utility classes */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.btn-primary {
+  background-color: #A76EEE;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: background-color 0.3s ease;
+}
+.btn-primary:hover {
+  background-color: #9155DD;
+}
+
+.card {
+  background: white;
+  color: #3E2772;
+  box-shadow: 0 10px 20px rgba(159, 119, 255, 0.15);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: box-shadow 0.3s ease;
+}
+.card:hover {
+  box-shadow: 0 15px 30px rgba(159, 119, 255, 0.35);
+}
