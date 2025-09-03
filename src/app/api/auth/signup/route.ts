@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'  // Use singleton
+import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
     console.log('🚀 Signup API called')
     
-    // Parse request body safely
     const body = await request.json()
     console.log('📝 Request body parsed:', { email: body.email, hasName: !!body.name })
     
@@ -27,6 +26,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      )
+    }
+
     console.log('🔍 About to check existing user')
 
     // Check if user already exists
@@ -38,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     if (existingUser) {
       return NextResponse.json(
-        { error: 'User already exists' },
+        { error: 'User already exists with this email' },
         { status: 409 }
       )
     }
@@ -46,21 +54,42 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Create user
-    console.log('👤 Creating user')
-    const user = await prisma.user.create({
-      data: {
-        email,
-        name,
-        password: hashedPassword,
-        hasCompletedOnboarding: false, // Match your schema
-      },
+    // Create user in transaction to ensure consistency
+    const result = await prisma.$transaction(async (tx) => {
+      // Create user
+      const user = await tx.user.create({
+        data: {
+          email,
+          name,
+          password: hashedPassword,
+        },
+      })
+
+      // Create associated profile
+      const profile = await tx.profile.create({
+        data: {
+          userId: user.id,
+          email: user.email,
+          displayName: user.name,
+          preferences: {}
+        }
+      })
+
+      return { user, profile }
     })
 
-    console.log('🎉 User created successfully:', user.id)
+    console.log('🎉 User and profile created successfully:', result.user.id)
 
     return NextResponse.json(
-      { user: { id: user.id, email: user.email } },
+      { 
+        success: true,
+        user: { 
+          id: result.user.id, 
+          email: result.user.email,
+          name: result.user.name
+        },
+        message: 'Account created successfully!'
+      },
       { status: 201 }
     )
 
@@ -68,11 +97,23 @@ export async function POST(request: NextRequest) {
     console.error('❌ Signup error details:', {
       message: error.message,
       stack: error.stack,
-      name: error.name
+      name: error.name,
+      code: error.code
     })
     
+    // Handle specific Prisma errors
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        { error: 'Email already exists' },
+        { status: 409 }
+      )
+    }
+
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     )
   }
