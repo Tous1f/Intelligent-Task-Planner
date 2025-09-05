@@ -1,8 +1,8 @@
-import { GeminiTaskParser } from './nlp/gemini-task-parser';
+import { geminiTaskParser } from './nlp/gemini-task-parser';
 import { prisma } from '@/lib/prisma';
 
 export interface AIInsight {
-  type: 'workload_prediction' | 'deadline_risk' | 'productivity_pattern' | 'study_recommendation';
+  type: 'WORKLOAD_PREDICTION' | 'DEADLINE_RISK' | 'PRODUCTIVITY_PATTERN' | 'STUDY_RECOMMENDATION';
   confidence: number;
   message: string;
   data: Record<string, any>;
@@ -18,17 +18,17 @@ export interface BehaviorPattern {
 }
 
 export class AIService {
-  private taskParser = new GeminiTaskParser();
+  private taskParser = geminiTaskParser;
 
   async generatePersonalizedInsights(profileId: string): Promise<AIInsight[]> {
     try {
       const insights: AIInsight[] = [];
 
       // Analyze user's task patterns
-      const userTasks = await prisma.task.findMany({
+    const userTasks = await prisma.task.findMany({
         where: { profileId },
         include: {
-          studySessions: true,
+      studysessions: true,
           schedules: true
         },
         orderBy: { createdAt: 'desc' },
@@ -64,13 +64,12 @@ export class AIService {
 
   async learnFromUserBehavior(profileId: string, action: string, context: Record<string, any>): Promise<void> {
     try {
-      await prisma.userBehavior.create({
+  await prisma.userBehavior.create({
         data: {
-          profileId,
-          actionType: action,
-          contextData: context,
-          timestamp: new Date(),
-          productivityScore: this.calculateProductivityScore(context)
+          // userBehavior model expects userId; use profileId as best-effort mapping
+          userId: profileId,
+          type: action,
+          data: JSON.stringify(context)
         }
       });
 
@@ -89,8 +88,7 @@ export class AIService {
         include: {
           profile: {
             include: {
-              userBehavior: true,
-              studySessions: true
+              studysessions: true
             }
           }
         }
@@ -140,7 +138,7 @@ export class AIService {
     }
 
     return {
-      type: 'workload_prediction',
+      type: 'WORKLOAD_PREDICTION',
       confidence,
       message,
       data: {
@@ -172,7 +170,7 @@ export class AIService {
 
     if (riskyTasks.length > 0) {
       return {
-        type: 'deadline_risk',
+        type: 'DEADLINE_RISK',
         confidence: 0.85,
         message: `⚠️ ${riskyTasks.length} task(s) at risk of missing deadlines. Consider starting immediately or breaking into smaller chunks.`,
         data: {
@@ -185,7 +183,7 @@ export class AIService {
     }
 
     return {
-      type: 'deadline_risk',
+      type: 'DEADLINE_RISK',
       confidence: 0.7,
       message: `✅ All ${upcomingDeadlines.length} upcoming deadlines appear manageable with current schedule.`,
       data: { upcomingDeadlines: upcomingDeadlines.length },
@@ -210,7 +208,7 @@ export class AIService {
 
     if (avgProductivity > 3.5 && completionRate > 0.8) {
       return {
-        type: 'productivity_pattern',
+        type: 'PRODUCTIVITY_PATTERN',
         confidence: 0.8,
         message: `🚀 Excellent productivity pattern! Average rating: ${avgProductivity.toFixed(1)}/5 with ${Math.round(completionRate * 100)}% completion rate.`,
         data: { avgProductivity, completionRate },
@@ -218,7 +216,7 @@ export class AIService {
       };
     } else if (avgProductivity < 2.5 || completionRate < 0.6) {
       return {
-        type: 'productivity_pattern',
+        type: 'PRODUCTIVITY_PATTERN',
         confidence: 0.7,
         message: `📈 Productivity could be improved. Consider adjusting study environment or breaking tasks into smaller chunks.`,
         data: { avgProductivity, completionRate },
@@ -242,7 +240,7 @@ export class AIService {
     const topSubject = Array.from(subjects.entries()).sort((a, b) => b[1] - a[1])[0];
     
     return {
-      type: 'study_recommendation',
+      type: 'STUDY_RECOMMENDATION',
       confidence: 0.6,
       message: `📚 Focus area: ${topSubject[0]} appears frequently in your tasks (${topSubject[1]} tasks). Consider dedicating focused study blocks to this subject.`,
       data: { topSubject: topSubject[0], taskCount: topSubject[1] },
@@ -252,12 +250,12 @@ export class AIService {
 
   private async saveInsights(profileId: string, insights: AIInsight[]): Promise<void> {
     for (const insight of insights) {
-      await prisma.aiInsight.create({
+      await prisma.aIInsight.create({
         data: {
           profileId,
-          insightType: insight.type,
-          confidenceLevel: insight.confidence,
-          insightData: {
+          type: insight.type,
+          confidence: insight.confidence,
+          data: {
             message: insight.message,
             data: insight.data,
             actionable: insight.actionable
@@ -284,9 +282,14 @@ export class AIService {
   }
 
   private async analyzeBehaviorPatterns(profileId: string): Promise<BehaviorPattern[]> {
+    // Resolve profile -> userId then fetch behaviors for that user
+    const profile = await prisma.profile.findUnique({ where: { id: profileId } });
+    const userId = profile?.userId;
+    if (!userId) return [];
+
     const behaviors = await prisma.userBehavior.findMany({
-      where: { profileId },
-      orderBy: { timestamp: 'desc' },
+      where: { userId },
+  orderBy: { timestamp: 'desc' },
       take: 100
     });
 

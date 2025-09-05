@@ -15,18 +15,9 @@ import {
   Plus,
   ArrowRight
 } from 'lucide-react';
-import GoogleCalendarIntegration from './GoogleCalendarIntegration';
-
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  dueDate?: string;
-  priority: number;
-  status: 'TODO' | 'IN_PROGRESS' | 'COMPLETED';
-  estimatedDuration?: number;
-  subject?: string;
-}
+import GoogleCalendarIntegration from '../ui/googleCalendarIntegration';
+import { taskService } from '@/lib/services/task-service';
+import { Task } from '@/types/task';
 
 interface DashboardStats {
   totalTasks: number;
@@ -78,53 +69,34 @@ export default function EnhancedDashboard() {
   };
 
   const fetchTasks = async () => {
-    // Simulate API call
-    const mockTasks: Task[] = [
-      {
-        id: '1',
-        title: 'Complete React Assignment',
-        description: 'Build a todo app with React hooks',
-        dueDate: '2025-09-06T18:00:00.000Z',
-        priority: 5,
-        status: 'IN_PROGRESS',
-        estimatedDuration: 120,
-        subject: 'Computer Science'
-      },
-      {
-        id: '2',
-        title: 'Study for Math Exam',
-        description: 'Review chapters 5-8 for calculus exam',
-        dueDate: '2025-09-08T09:00:00.000Z',
-        priority: 4,
-        status: 'TODO',
-        estimatedDuration: 180,
-        subject: 'Mathematics'
-      },
-      {
-        id: '3',
-        title: 'Write History Essay',
-        description: 'World War II analysis paper',
-        dueDate: '2025-09-10T23:59:00.000Z',
-        priority: 3,
-        status: 'TODO',
-        estimatedDuration: 240,
-        subject: 'History'
-      }
-    ];
-    setTasks(mockTasks);
+    try {
+      const tasks = await taskService.getAllTasks();
+      setTasks(tasks);
+    } catch (error) {
+      console.error('Failed to fetch tasks:', error);
+      setTasks([]);
+    };
   };
 
   const fetchStats = async () => {
-    // Simulate API call
-    const mockStats: DashboardStats = {
-      totalTasks: 15,
-      completedTasks: 8,
-      overdueTasks: 2,
-      todayTasks: 3,
-      weeklyProductivity: 78,
-      studyStreak: 5
-    };
-    setStats(mockStats);
+    try {
+      const response = await fetch('/api/study/stats');
+      if (!response.ok) {
+        throw new Error('Failed to fetch study stats');
+      }
+      const stats = await response.json();
+      setStats(stats);
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+      setStats({
+        totalTasks: 0,
+        completedTasks: 0,
+        overdueTasks: 0,
+        todayTasks: 0,
+        weeklyProductivity: 0,
+        studyStreak: 0
+      });
+    }
   };
 
   const getUrgentTasks = () => {
@@ -322,18 +294,18 @@ export default function EnhancedDashboard() {
                             <div className="flex items-center space-x-4 text-sm text-gray-600 mb-2">
                               <span className="flex items-center">
                                 <Clock className="w-4 h-4 mr-1" />
-                                {task.estimatedDuration} min
+                                {(task as any).estimatedDuration} min
                               </span>
                               <span className="flex items-center">
                                 <BookOpen className="w-4 h-4 mr-1" />
-                                {task.subject}
+                                {(task as any).subject}
                               </span>
                               <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                                task.priority >= 4 
+                                ((task as any).priority === 'HIGH') 
                                   ? 'bg-red-100 text-red-700' 
                                   : 'bg-yellow-100 text-yellow-700'
                               }`}>
-                                {task.priority >= 4 ? 'High Priority' : 'Medium Priority'}
+                                {((task as any).priority === 'HIGH') ? 'High Priority' : 'Medium Priority'}
                               </span>
                             </div>
                             {task.dueDate && (

@@ -1,20 +1,23 @@
-'use client';
 
-import Card from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
+'use client';
+import EnhancedCalendarView from "@/components/calendar/EnhancedCalendarView";
+import { Card } from "@/components/ui/card";
 
 export default function CalendarPage() {
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <h1 className="font-display text-3xl mb-6 text-lavender-700">Calendar Integration</h1>
-      <Card>
-        <p className="text-lavender-700 mb-4">
-          Sync your tasks with Google Calendar to never miss a deadline.
+    <div className="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold">Calendar & Tasks</h1>
+        <p className="text-muted-foreground mt-2">
+          View and manage your schedule, sync with Google Calendar, and get AI-powered insights
         </p>
-        <Button variant="primary" onClick={() => alert('Manage calendar sync')}>
-          Sync Calendar
-        </Button>
-      </Card>
+      </div>
+
+      <div className="space-y-6">
+        <Card className="border-accent-foreground/10">
+          <EnhancedCalendarView tasks={[]} />
+        </Card>
+      </div>
     </div>
   );
 }

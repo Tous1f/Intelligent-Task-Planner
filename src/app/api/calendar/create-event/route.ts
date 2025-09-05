@@ -1,7 +1,7 @@
 // src/app/api/calendar/create-event/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from '../../auth/[...nextauth]/auth';
 import { google } from 'googleapis';
 
 export async function POST(request: NextRequest) {

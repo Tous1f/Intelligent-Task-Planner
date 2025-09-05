@@ -12,7 +12,7 @@ interface ParsedTask {
   tags: string[];
 }
 
-class GeminiTaskParser {
+export class GeminiTaskParser {
   private genAI: GoogleGenerativeAI | null = null;
   private model: any = null;
 

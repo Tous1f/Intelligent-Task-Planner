@@ -192,24 +192,25 @@ export default function EnhancedFooter() {
                 
                 <ul className="space-y-3">
                   {section.links.map((link, linkIndex) => (
-                    <motion.li
-                      key={link.href}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.4 + sectionIndex * 0.1 + linkIndex * 0.05 }}
-                    >
-                      <Link
-                        href={link.href}
-                        className="text-lavender-300 hover:text-lavender-100 transition-all duration-300 text-sm flex items-center group"
+                    <li key={link.href}>
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.4 + sectionIndex * 0.1 + linkIndex * 0.05 }}
                       >
-                        <span className="mr-3 group-hover:scale-110 transition-transform">
-                          {link.icon}
-                        </span>
-                        <span className="group-hover:translate-x-1 transition-transform">
-                          {link.label}
-                        </span>
-                      </Link>
-                    </motion.li>
+                        <Link
+                          href={link.href}
+                          className="text-lavender-300 hover:text-lavender-100 transition-all duration-300 text-sm flex items-center group"
+                        >
+                          <span className="mr-3 group-hover:scale-110 transition-transform">
+                            {link.icon}
+                          </span>
+                          <span className="group-hover:translate-x-1 transition-transform">
+                            {link.label}
+                          </span>
+                        </Link>
+                      </motion.div>
+                    </li>
                   ))}
                 </ul>
               </motion.div>

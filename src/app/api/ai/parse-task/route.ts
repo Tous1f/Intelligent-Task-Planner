@@ -1,7 +1,7 @@
 // src/app/api/ai/parse-task/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '../../auth/[...nextauth]/route'
+import { authOptions } from '../../auth/[...nextauth]/auth'
 import { geminiTaskParser } from '@/lib/ai/nlp/gemini-task-parser'
 
 export async function POST(request: NextRequest) {

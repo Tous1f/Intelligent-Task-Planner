@@ -1,7 +1,7 @@
 // src/lib/auth/withAuth.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/app/api/auth/[...nextauth]/auth'
 
 export function withAuth(handler: (req: NextRequest, session: any) => Promise<NextResponse>) {
   return async (req: NextRequest) => {

@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/auth/supabase'
-import { claudeTaskParser } from '@/lib/ai/nlp/claude-task-parser'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/app/api/auth/[...nextauth]/auth'
+import { geminiTaskParser } from '@/lib/ai/nlp/gemini-task-parser'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
-    if (authError || !user) {
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -17,7 +16,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Text input required' }, { status: 400 })
     }
 
-    const parsedTask = await claudeTaskParser.parseNaturalLanguage(text)
+    const parsedTask = await geminiTaskParser.parseNaturalLanguage(text)
     
     return NextResponse.json({ 
       success: true, 

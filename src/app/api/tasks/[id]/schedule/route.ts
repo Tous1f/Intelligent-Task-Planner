@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../../auth/[...nextauth]/route';
+import { authOptions } from '../../../auth/[...nextauth]/auth';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(
@@ -20,14 +20,17 @@ export async function POST(
       return NextResponse.json({ error: 'Task ID required' }, { status: 400 });
     }
 
-    // Get user profile
-    const profile = await prisma.profile.findUnique({
-      where: { email: session.user.email }
+    // FIXED: Get user first, then profile through relationship
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { profile: true }
     });
 
-    if (!profile) {
+    if (!user?.profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
+
+    const profile = user.profile;
 
     // Verify task ownership
     const task = await prisma.task.findFirst({
@@ -42,12 +45,11 @@ export async function POST(
     }
 
     // Get existing schedules to avoid conflicts
-    const existingSchedules = await prisma.schedule.findMany({
-      where: {
-        profileId: profile.id,
-        scheduledStart: { gte: new Date() }
-      }
-    });
+      const existingSchedules = await prisma.schedule.findMany({
+        where: ({ profileId: profile.id } as any),
+        // use mapped DB column 'start' for ordering
+        orderBy: { start: 'asc' }
+      });
 
     // Generate optimal schedule
     const scheduleResult = await generateSmartSchedule(task, {
@@ -58,19 +60,19 @@ export async function POST(
     });
 
     // Create the schedule
-    const schedule = await prisma.schedule.create({
-      data: {
-        taskId: task.id,
-        profileId: profile.id,
-        scheduledStart: scheduleResult.scheduledStart,
-        scheduledEnd: scheduleResult.scheduledEnd,
-        aiConfidence: scheduleResult.confidence,
-        scheduleType: 'ai_generated'
-      },
-      include: {
-        task: true
-      }
-    });
+      const schedule = await prisma.schedule.create({
+        data: ({
+          taskId: task.id,
+          profileId: profile.id,
+          start: scheduleResult.scheduledStart,
+          end: scheduleResult.scheduledEnd,
+          aiConfidence: scheduleResult.confidence,
+          scheduleType: 'AI_GENERATED'
+        } as any),
+        include: {
+          task: true
+        }
+      });
 
     return NextResponse.json({ 
       success: true, 
@@ -81,12 +83,12 @@ export async function POST(
       },
       message: 'Task scheduled successfully!'
     });
-
   } catch (error) {
     console.error('Schedule creation error:', error);
     return NextResponse.json({ 
       error: 'Failed to schedule task',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      // FIXED: Proper TypeScript error handling
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     }, { status: 500 });
   }
 }
@@ -104,40 +106,40 @@ export async function GET(
 
     const taskId = params.id;
     
-    // Get user profile
-    const profile = await prisma.profile.findUnique({
-      where: { email: session.user.email }
+    // FIXED: Get user first, then profile through relationship
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { profile: true }
     });
 
-    if (!profile) {
+    if (!user?.profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
+    const profile = user.profile;
+
     // Get task schedules
-    const schedules = await prisma.schedule.findMany({
-      where: {
-        taskId: taskId,
-        profileId: profile.id
-      },
-      include: {
-        task: true
-      },
-      orderBy: {
-        scheduledStart: 'asc'
-      }
-    });
+      const schedules = await prisma.schedule.findMany({
+        where: ({ taskId: taskId, profileId: profile.id } as any),
+        include: {
+          task: true
+        },
+        orderBy: {
+          start: 'asc'
+        }
+      });
 
     return NextResponse.json({
       success: true,
       schedules,
       total: schedules.length
     });
-
   } catch (error) {
     console.error('Schedule fetch error:', error);
     return NextResponse.json({ 
       error: 'Failed to fetch schedules',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      // FIXED: Proper TypeScript error handling
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     }, { status: 500 });
   }
 }
@@ -174,15 +176,12 @@ async function generateSmartSchedule(task: any, options: any) {
 
   // Generate recommendations
   const recommendations = [];
-  
   if (task.priority >= 4) {
     recommendations.push("High priority task - consider scheduling during your peak focus hours");
   }
-  
   if (taskDuration > 90) {
     recommendations.push("Long task - consider breaking into multiple sessions with breaks");
   }
-  
   if (conflicts.length > 0) {
     recommendations.push("Schedule conflicts detected - consider adjusting time or splitting task");
   }

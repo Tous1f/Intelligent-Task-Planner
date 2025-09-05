@@ -1,6 +1,6 @@
 'use client';
-import Card from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 export default function CalendarSettings() {
   return (
@@ -10,10 +10,20 @@ export default function CalendarSettings() {
         <p className="mb-4 text-lavender-600">
           Connect or disconnect your Google Calendar here. You can sync your tasks for seamless planning across platforms.
         </p>
-        <Button variant="primary" className="w-full mb-2" onClick={() => alert('Connect Google Calendar')}>
+        <Button
+          variant="primary"
+          className="w-full mb-2"
+          onClick={() => {
+            window.location.href = '/api/auth/signin/google?callbackUrl=/dashboard/calendar';
+          }}
+        >
           Connect Google Calendar
         </Button>
-        <Button variant="secondary" className="w-full" onClick={() => alert('Disconnect Calendar')}>
+        <Button
+          variant="secondary"
+          className="w-full"
+          onClick={() => alert('Disconnect Calendar (not implemented)')}
+        >
           Disconnect
         </Button>
       </Card>

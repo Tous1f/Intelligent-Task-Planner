@@ -10,13 +10,15 @@ export interface PomodoroConfig {
 export interface PomodoroSession {
   id: string;
   taskId: string;
-  sessionType: 'WORK' | 'SHORT_BREAK' | 'LONG_BREAK';
+  // Use canonical StudySessionType values from Prisma schema
+  sessionType: 'POMODORO' | 'FREESTYLE' | 'BREAK';
   plannedDuration: number;
   actualDuration?: number;
   completed: boolean;
   startTime: Date;
   endTime?: Date;
-  interruptions: number;
+  // totalPauseDuration is the canonical numeric field in the schema
+  totalPauseDuration: number;
   notes?: string;
 }
 
@@ -41,25 +43,32 @@ export class PomodoroTimer {
       const finalConfig = { ...this.defaultConfig, ...config };
       const duration = this.getDuration(sessionType, finalConfig);
 
+      const canonicalSessionType = sessionType === 'WORK' ? 'POMODORO' : (sessionType === 'SHORT_BREAK' || sessionType === 'LONG_BREAK' ? 'BREAK' : sessionType as any);
+
       const studySession = await prisma.studySession.create({
         data: {
           taskId: taskId,
+          // use scalar foreign key to avoid nested connect typing issues
           profileId: task.profileId,
-          sessionType: sessionType === 'WORK' ? 'POMODORO' : 'BREAK',
+          // userId is required by the StudySession model
+          userId: task.userId,
+          // cast to any to satisfy generated client typing for the enum
+          sessionType: canonicalSessionType as any,
           plannedDuration: duration,
           startedAt: new Date(),
-          interruptions: 0
+          totalPauseDuration: 0
         }
       });
 
       return {
-        id: studySession.id,
-        taskId,
-        sessionType,
-        plannedDuration: duration,
-        completed: false,
-        startTime: studySession.startedAt,
-        interruptions: 0
+  id: studySession.id,
+  taskId,
+  // return canonical session type
+  sessionType: canonicalSessionType as 'POMODORO' | 'FREESTYLE' | 'BREAK',
+  plannedDuration: duration,
+  completed: false,
+  startTime: studySession.startedAt,
+  totalPauseDuration: 0
       };
 
     } catch (error) {
@@ -75,7 +84,7 @@ export class PomodoroTimer {
         data: {
           completedAt: new Date(),
           actualDuration: actualDuration,
-          interruptions: interruptions || 0,
+          totalPauseDuration: interruptions || 0,
           productivityRating: productivityRating
         }
       });
@@ -87,8 +96,8 @@ export class PomodoroTimer {
       });
 
       if (session && session.task) {
-        const totalTimeSpent = await this.getTotalTimeSpent(session.taskId);
-        const progressPercentage = Math.min((totalTimeSpent / (session.task.estimatedDuration || 60)) * 100, 100);
+  const totalTimeSpent = await this.getTotalTimeSpent(session.taskId);
+  const progressPercentage = Math.min((totalTimeSpent / (((session as any).task)?.estimatedDuration || 60)) * 100, 100);
         
         // Update task with progress
         await prisma.task.update({
@@ -109,7 +118,7 @@ export class PomodoroTimer {
   async getSessionStats(profileId: string, period: 'today' | 'week' | 'month'): Promise<any> {
     const startDate = this.getStartDate(period);
     
-    const sessions = await prisma.studySession.findMany({
+      const sessions = await prisma.studySession.findMany({
       where: {
         profileId,
         startedAt: {

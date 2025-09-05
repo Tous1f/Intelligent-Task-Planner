@@ -1,24 +1,35 @@
 'use client';
 
-import { Toaster as SonnerToaster } from 'sonner';
+import {
+  Toast,
+  ToastClose,
+  ToastDescription,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport,
+} from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast";
 
 export function Toaster() {
+  const { toasts } = useToast();
+
   return (
-    <SonnerToaster 
-      position="top-right"
-      toastOptions={{
-        style: {
-          background: 'white',
-          border: '1px solid #DFD8F9',
-          color: '#3E2772',
-        },
-        className: 'sonner-toast',
-        descriptionClassName: 'sonner-description',
-      }}
-      theme="light"
-      richColors
-      expand={true}
-      visibleToasts={4}
-    />
+    <ToastProvider>
+      {toasts.map(function ({ id, title, description, action, ...props }) {
+        return (
+          <Toast key={id} {...props}>
+            <div className="grid gap-1">
+              {title && <ToastTitle>{title}</ToastTitle>}
+              {description && (
+                <ToastDescription>{description}</ToastDescription>
+              )}
+            </div>
+            {action}
+            <ToastClose />
+          </Toast>
+        );
+      })}
+      <ToastViewport />
+    </ToastProvider>
   );
 }

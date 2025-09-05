@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from '../../auth/[...nextauth]/auth';
 import { prisma } from '@/lib/prisma';
 
 // Start a pomodoro session
@@ -17,10 +17,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Task ID required' }, { status: 400 });
     }
 
-    // Get user profile
-    const profile = await prisma.profile.findUnique({
-      where: { email: session.user.email }
+    // Get user profile through user record
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { profile: true }
     });
+
+    const profile = user?.profile;
 
     if (!profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
@@ -39,14 +42,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Create study session
-    const studySession = await prisma.studySession.create({
+  const studySession = await prisma.studySession.create({
       data: {
         taskId: taskId,
+        userId: user.id,
         profileId: profile.id,
         sessionType: sessionType,
         plannedDuration: plannedDuration,
         startedAt: new Date(),
-        interruptions: 0
+        totalPauseDuration: 0
       }
     });
 
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest) {
     console.error('Pomodoro start error:', error);
     return NextResponse.json({ 
       error: 'Failed to start pomodoro session',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     }, { status: 500 });
   }
 }
@@ -77,10 +81,13 @@ export async function GET(request: NextRequest) {
     const period = searchParams.get('period') as 'today' | 'week' | 'month' || 'today';
     const sessionId = searchParams.get('sessionId');
     
-    // Get profile
-    const profile = await prisma.profile.findUnique({
-      where: { email: session.user.email }
+    // Get user profile through user record
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { profile: true }
     });
+
+    const profile = user?.profile;
 
     if (!profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
@@ -88,7 +95,7 @@ export async function GET(request: NextRequest) {
 
     // If sessionId provided, return specific session
     if (sessionId) {
-      const studySession = await prisma.studySession.findFirst({
+  const studySession = await prisma.studySession.findFirst({
         where: {
           id: sessionId,
           profileId: profile.id
@@ -135,7 +142,7 @@ export async function GET(request: NextRequest) {
     console.error('Pomodoro stats error:', error);
     return NextResponse.json({ 
       error: 'Failed to get pomodoro stats',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     }, { status: 500 });
   }
 }
@@ -160,10 +167,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Session ID required' }, { status: 400 });
     }
 
-    // Get profile
-    const profile = await prisma.profile.findUnique({
-      where: { email: session.user.email }
+    // Get user profile through user record
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: { profile: true }
     });
+
+    const profile = user?.profile;
 
     if (!profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
@@ -184,10 +194,10 @@ export async function PUT(request: NextRequest) {
     // Update session
     const updatedSession = await prisma.studySession.update({
       where: { id: sessionId },
-      data: {
+        data: {
         completedAt: new Date(),
         actualDuration: actualDuration || existingSession.plannedDuration,
-        interruptions,
+        totalPauseDuration: interruptions,
         productivityRating: productivityRating ? Math.min(Math.max(productivityRating, 1), 5) : null
       },
       include: { task: true }
@@ -212,7 +222,7 @@ export async function PUT(request: NextRequest) {
     console.error('Pomodoro completion error:', error);
     return NextResponse.json({ 
       error: 'Failed to complete pomodoro session',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     }, { status: 500 });
   }
 }
@@ -245,7 +255,10 @@ function groupSessionsBySubject(sessions: any[]): Record<string, number> {
 
 async function getTotalTimeSpent(taskId: string): Promise<number> {
   const sessions = await prisma.studySession.findMany({
-    where: { taskId }
+    where: { taskId },
+    select: {
+      plannedDuration: true
+    }
   });
-  return sessions.reduce((sum, s) => sum + (s.actualDuration || s.plannedDuration), 0);
+  return sessions.reduce((sum, s) => sum + (s.plannedDuration || 0), 0);
 }

@@ -1,0 +1,65 @@
+'use client';
+
+import { Metadata } from 'next';
+import EnhancedSidebar from '@/components/ui/EnhancedSidebar';
+import DashboardHeader from '@/components/ui/DashboardHeader';
+import { 
+  Home, 
+  CheckSquare, 
+  Calendar, 
+  Star, 
+  Settings 
+} from 'lucide-react';
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const navItems = [
+    {
+      title: 'Dashboard',
+      href: '/dashboard',
+      icon: Home,
+      description: 'Overview of your tasks and activities',
+    },
+    {
+      title: 'Tasks',
+      href: '/dashboard/tasks',
+      icon: CheckSquare,
+      description: 'Manage your tasks and assignments',
+    },
+    {
+      title: 'Calendar',
+      href: '/dashboard/calendar',
+      icon: Calendar,
+      description: 'View and manage your schedule',
+    },
+    {
+      title: 'Important',
+      href: '/dashboard/important',
+      icon: Star,
+      description: 'View your important tasks',
+    },
+    {
+      title: 'Settings',
+      href: '/dashboard/settings',
+      icon: Settings,
+      description: 'Configure your preferences',
+    }
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <DashboardHeader />
+      <div className="flex">
+        <EnhancedSidebar items={navItems} className="hidden lg:block" />
+        <main className="flex-1 pt-16">
+          <div className="p-6">
+            {children}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}

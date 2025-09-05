@@ -56,7 +56,7 @@ export default function NewTaskPage() {
         <Input
           placeholder="Task title"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
         />
         
         <Textarea

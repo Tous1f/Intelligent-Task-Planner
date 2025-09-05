@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, Clock, MapPin, Users, RefreshCw, AlertCircle, CheckCircle2, ExternalLink } from 'lucide-react';
 
@@ -27,6 +28,7 @@ interface CalendarIntegrationProps {
 }
 
 export default function GoogleCalendarIntegration({ className = '' }: CalendarIntegrationProps) {
+  const router = useRouter();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,8 +57,8 @@ export default function GoogleCalendarIntegration({ className = '' }: CalendarIn
       setLoading(true);
       setError(null);
       
-      // Redirect to Google OAuth for calendar permissions
-      window.location.href = '/api/auth/google-calendar';
+      // Use the dedicated calendar connection endpoint
+      window.location.href = '/api/auth/connect-calendar';
     } catch (error) {
       setError('Failed to connect to Google Calendar');
       setLoading(false);

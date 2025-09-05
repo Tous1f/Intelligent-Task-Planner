@@ -38,7 +38,7 @@ export function LoginSystem() {
   }
 
   const handleGoogleLogin = () => {
-    signIn('google')
+    signIn('google', { callbackUrl: '/dashboard' })
   }
 
   // Loading state

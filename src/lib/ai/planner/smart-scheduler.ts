@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import type { Task, Schedule } from '@prisma/client';
+import type { Task, Schedule, TaskPriority } from '@prisma/client';
 
 export interface ScheduleRequest {
   taskId: string;
@@ -34,28 +34,28 @@ export class SmartScheduler {
 
       // Get existing schedules to avoid conflicts
       const existingSchedules = await prisma.schedule.findMany({
-        where: { 
+        where: ({ 
           profileId: task.profileId,
-          scheduledStart: {
+          start: {
             gte: new Date()
           }
-        }
-      });
+        } as any)
+      } as any);
 
       // AI-powered scheduling logic
       const scheduledSlots = this.generateOptimalSchedule(task, existingSchedules, request);
       
       // Save the schedule to database
       const schedule = await prisma.schedule.create({
-        data: {
+        data: ({
           taskId: task.id,
           profileId: task.profileId,
-          scheduledStart: scheduledSlots[0].start,
-          scheduledEnd: scheduledSlots[0].end,
-          aiConfidence: scheduledSlots[0].confidence,
-          scheduleType: 'ai_generated'
-        }
-      });
+          start: scheduledSlots[0].start,
+          end: scheduledSlots[0].end,
+          aiConfidence: scheduledSlots[0].confidence as any,
+          scheduleType: 'AI_GENERATED'
+        } as any)
+      } as any);
 
       return {
         scheduledSlots,
@@ -71,7 +71,7 @@ export class SmartScheduler {
 
   private generateOptimalSchedule(task: Task, existingSchedules: Schedule[], request: ScheduleRequest) {
     const now = new Date();
-    const taskDuration = task.estimatedDuration || 60;
+  const taskDuration = (task as any).estimatedDuration || 60;
     
     // Smart scheduling algorithm
     const baseTime = request.preferredDate || new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -85,7 +85,7 @@ export class SmartScheduler {
       start: startTime,
       end: endTime,
       confidence: this.calculateConfidence(task, startTime),
-      reasoning: `Scheduled based on ${task.priority === 5 ? 'high' : 'medium'} priority and estimated ${taskDuration} minute duration`
+  reasoning: `Scheduled based on priority ${task.priority} and estimated ${taskDuration} minute duration`
     }];
   }
 
@@ -93,10 +93,11 @@ export class SmartScheduler {
     let confidence = 0.7; // Base confidence
     
     // Higher confidence for high-priority tasks
-    if (task.priority >= 4) confidence += 0.2;
+  // Task.priority is an enum (TaskPriority). Treat HIGH as highest confidence.
+  if (task.priority === ("HIGH" as TaskPriority)) confidence += 0.2;
     
     // Higher confidence for tasks with clear subjects
-    if (task.subject) confidence += 0.1;
+  if ((task as any).subject) confidence += 0.1;
     
     return Math.min(confidence, 1.0);
   }
@@ -106,8 +107,8 @@ export class SmartScheduler {
     
     scheduledSlots.forEach(slot => {
       existingSchedules.forEach(existing => {
-        if (this.timesOverlap(slot.start, slot.end, existing.scheduledStart, existing.scheduledEnd)) {
-          conflicts.push(`Conflicts with existing schedule at ${existing.scheduledStart.toLocaleString()}`);
+        if (this.timesOverlap(slot.start, slot.end, existing.start, existing.end)) {
+          conflicts.push(`Conflicts with existing schedule at ${existing.start.toLocaleString()}`);
         }
       });
     });
@@ -122,16 +123,16 @@ export class SmartScheduler {
   private generateRecommendations(task: Task, scheduledSlots: any[]): string[] {
     const recommendations: string[] = [];
     
-    if (task.priority >= 4) {
+    if (task.priority === ("HIGH" as TaskPriority)) {
       recommendations.push("High priority task - consider scheduling during your peak focus hours");
     }
     
-    if (task.estimatedDuration > 120) {
+    if ((task as any).estimatedDuration && (task as any).estimatedDuration > 120) {
       recommendations.push("Long task detected - consider breaking into smaller sessions with breaks");
     }
     
-    if (task.subject) {
-      recommendations.push(`Related to ${task.subject} - review previous notes before starting`);
+    if ((task as any).subject) {
+      recommendations.push(`Related to ${(task as any).subject} - review previous notes before starting`);
     }
     
     return recommendations;

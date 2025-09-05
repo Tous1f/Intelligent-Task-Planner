@@ -1,8 +1,8 @@
 import { ReactNode } from 'react'
 import { AuthProvider } from '@/components/providers/auth-provider'
 import { Toaster } from "@/components/ui/toaster"
-import Header from '@/components/ui/Header'
-import Footer from '@/components/ui/Footer'
+import Header from '@/components/ui/header'
+import Footer from '@/components/ui/footer'
 import './globals.css'
 
 export const metadata = {

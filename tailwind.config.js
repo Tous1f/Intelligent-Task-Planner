@@ -6,34 +6,65 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        /* Primary Lavender Palette */
-        lavender: {
-          50: '#F5F0FF',  // Lightest background
-          100: '#EDEDFA', // Light background
-          200: '#DFD8F9', // Border colors
-          300: '#D9C2EA', // Muted elements
-          400: '#C884F7', // Icons, accent
-          500: '#A76EEE', // Primary buttons
-          600: '#9155DD', // Hover states
-          700: '#7C3AED', // Dark text
-          800: '#6B46C1', // Darker elements
-          900: '#553CDA', // Darkest text
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        card: "hsl(var(--card))",
+        "card-foreground": "hsl(var(--card-foreground))",
+        popover: "hsl(var(--popover))",
+        "popover-foreground": "hsl(var(--popover-foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+          50: "hsl(var(--primary-50))",
+          100: "hsl(var(--primary-100))",
+          200: "hsl(var(--primary-200))",
+          300: "hsl(var(--primary-300))",
+          400: "hsl(var(--primary-400))",
+          500: "hsl(var(--primary-500))",
+          600: "hsl(var(--primary-600))",
+          700: "hsl(var(--primary-700))",
+          800: "hsl(var(--primary-800))",
+          900: "hsl(var(--primary-900))",
+          950: "hsl(var(--primary-950))",
         },
-        sage: {
-          50: '#F0F9F4',
-          100: '#E6F4EA',
-          200: '#3EB489',
-          300: '#90EB98',
-          400: '#6BE988',
-          500: '#4ADE80',
+        secondary: {
+          DEFAULT: "hsl(var(--secondary))",
+          50: "hsl(var(--secondary-50))",
+          100: "hsl(var(--secondary-100))",
+          200: "hsl(var(--secondary-200))",
+          300: "hsl(var(--secondary-300))",
+          400: "hsl(var(--secondary-400))",
+          500: "hsl(var(--secondary-500))",
+          600: "hsl(var(--secondary-600))",
+          700: "hsl(var(--secondary-700))",
+          800: "hsl(var(--secondary-800))",
+          900: "hsl(var(--secondary-900))",
+          950: "hsl(var(--secondary-950))",
         },
-        coral: {
-          50: '#FFF1F0',
-          100: '#FFE4E1',
-          200: '#FECACA',
-          300: '#FCA5A5',
-          400: '#F87171',
-          500: '#EDA0BF',
+        accent: {
+          DEFAULT: "hsl(var(--accent))",
+          50: "hsl(var(--accent-50))",
+          100: "hsl(var(--accent-100))",
+          200: "hsl(var(--accent-200))",
+          300: "hsl(var(--accent-300))",
+          400: "hsl(var(--accent-400))",
+          500: "hsl(var(--accent-500))",
+          600: "hsl(var(--accent-600))",
+          700: "hsl(var(--accent-700))",
+          800: "hsl(var(--accent-800))",
+          900: "hsl(var(--accent-900))",
+          950: "hsl(var(--accent-950))",
+        },
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        destructive: {
+          DEFAULT: "hsl(var(--destructive))",
+          foreground: "hsl(var(--destructive-foreground))",
+        },
+        muted: {
+          DEFAULT: "hsl(var(--muted))",
+          foreground: "hsl(var(--muted-foreground))",
         },
         cream: {
           50: '#FFFEF7',

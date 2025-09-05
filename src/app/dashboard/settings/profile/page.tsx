@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import Input from '@/components/ui/Input';
-import Button from '@/components/ui/Button';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogClose, DialogFooter } from '@/components/ui/Dialog';
+import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogDescription, DialogClose, DialogFooter } from '@/components/ui/dialog';
 
 export default function UserProfilePage() {
-  const { addToast } = useToast();
+  const { toast } = useToast();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -19,7 +19,11 @@ export default function UserProfilePage() {
     // Simulate API call
     setTimeout(() => {
       setIsSaving(false);
-      addToast({ title: 'Profile Saved', description: 'Your profile has been updated successfully.', type: 'success' });
+      toast({
+        title: 'Profile Saved',
+        description: 'Your profile has been updated successfully.',
+        variant: 'success'
+      });
     }, 1500);
   };
 
@@ -72,9 +76,13 @@ export default function UserProfilePage() {
               <Button variant="secondary">Cancel</Button>
             </DialogClose>
             <Button
-              variant="destructive"
+              variant="danger"
               onClick={() => {
-                addToast({ title: 'Account Deleted', description: 'Your account has been deleted.', type: 'destructive' });
+                toast({
+                  title: 'Account Deleted',
+                  description: 'Your account has been deleted.',
+                  variant: 'destructive'
+                });
               }}
             >
               Confirm Delete

@@ -1,55 +1,86 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
+// This is your Prisma schema file
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
+// Enums
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+
+  @@map("taskpriority")
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  REVIEWING
+  COMPLETED
+  CANCELLED
+  DEFERRED
+  ARCHIVED
+
+  @@map("taskstatus")
+}
+
+enum EventSource {
+  LOCAL
+  GOOGLE
+  TASK
+}
+
+enum FlashcardStatus {
+  NEW
+  LEARNING
+  REVIEWING
+  MASTERED
+
+  @@map("flashcardstatus")
+}
+
+enum StudySessionType {
+  POMODORO
+  FREESTYLE
+  BREAK
+
+  @@map("studysessiontype")
+}
+
+// Models
 model Account {
-  id                String  @id @default(cuid())
+  id                String   @id @default(cuid()) @map("id")
   userId            String
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?  @db.Text
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@map("account")
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String   @id @default(cuid()) @map("id")
   sessionToken String   @unique
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
 
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  password      String?
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  accounts Account[]
-  sessions Session[]
-  profile  Profile?
+  @@map("session")
 }
 
 model VerificationToken {
@@ -58,166 +89,295 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+  @@map("verificationtoken")
+}
+
+model User {
+  id            String          @id @default(cuid()) @map("id")
+  name          String?
+  email         String          @unique
+  password      String?
+  emailVerified DateTime?
+  image         String?         @db.Text
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  tasks         Task[]
+  studysessions StudySession[]
+  behavior      UserBehavior[]
+  settings      UserSettings?
+  profile       Profile?
+  calendars     Calendar[]
+  flashcardDecks FlashcardDeck[]
+
+  @@map("user")
 }
 
 model Profile {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  timezone          String   @default("UTC")
+  id                String          @id @default(cuid()) @map("id")
+  userId            String          @unique @map("userId")
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timezone          String          @default("UTC")
   studyPreferences  Json?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  learningStyle     String?         // Visual, Auditory, Kinesthetic, Reading/Writing
+  productiveHours   Json?           // Array of preferred study hours
+  breakPreferences  Json?           // Break timing preferences
+  focusTime        Int?            // Typical focus duration in minutes
+  distractionLevel String?         // LOW, MEDIUM, HIGH
+  energyPattern    String?         // MORNING, AFTERNOON, EVENING
+  taskBatchSize    Int?            // Preferred number of tasks to batch
+  notifications    Boolean         @default(true)
+  emailUpdates     Boolean         @default(true)
+  insights         AIInsight[]
+  flashcards       Flashcard[]
+  tasks            Task[]
+  studysessions    StudySession[]
+  schedules        Schedule[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
-  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tasks           Task[]
-  schedules       Schedule[]
-  studySessions   StudySession[]
-  userBehavior    UserBehavior[]
-  aiInsights      AiInsight[]
-  flashcards      Flashcard[]
+  @@index([userId])
+  @@map("profile")
+}
+
+model UserSettings {
+  id               String   @id @default(cuid()) @map("id")
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme            String   @default("system")
+  language         String   @default("en")
+  notifications    Boolean  @default(true)
+  autoStartPomodoro Boolean @default(false)
+  pomodoroLength   Int      @default(25)
+  shortBreakLength Int      @default(5)
+  longBreakLength  Int      @default(15)
+
+  @@map("usersettings")
 }
 
 model Task {
-  id                String     @id @default(cuid())
-  profileId         String
-  title             String
-  description       String?
-  dueDate           DateTime?
-  priority          Int        @default(3)
-  status            TaskStatus @default(TODO)
-  estimatedDuration Int?       // in minutes
-  actualDuration    Int?       // in minutes
-  subject           String?
-  taskType          TaskType   @default(OTHER)
-  tags              String[]   @default([])
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  id              String       @id @default(cuid()) @map("id")
+  title           String
+  description     String?      @db.Text
+  dueDate         DateTime?
+  priority        TaskPriority
+  status          TaskStatus
+  tags            String       // Comma-separated tags
+  estimatedDuration Int?      @map("estimate") // Alias used in code
+  actualTime      Int?        // Actual time spent in minutes
+  actualDuration  Int?        // Actual duration in minutes
+  complexity      Int?        // 1-5 scale
+  recurring       Boolean     @default(false)
+  recurrenceRule  String?     // iCal RRule format
+  reminderBefore  Int?        // Minutes before to remind
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile         Profile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId       String
+  subject         String?     // Subject/category used in code
+  parentTaskId    String?     // For subtasks
+  parentTask      Task?       @relation("SubTasks", fields: [parentTaskId], references: [id])
+  subtasks        Task[]      @relation("SubTasks")
+  dependencies    Task[]      @relation("TaskDependencies")
+  dependentOn     Task[]      @relation("TaskDependencies")
+  studysessions   StudySession[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  completedAt     DateTime?
+  calendarId      String?
+  calendar        Calendar?   @relation(fields: [calendarId], references: [id])
+  schedules       Schedule[]
+  source          String      @default("USER")
+  color          String?
 
-  profile       Profile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  schedules     Schedule[]
-  studySessions StudySession[]
-
-  @@index([profileId, status])
-  @@index([profileId, dueDate])
-  @@index([profileId, priority])
-}
-
-model Schedule {
-  id             String       @id @default(cuid())
-  taskId         String
-  profileId      String
-  scheduledStart DateTime
-  scheduledEnd   DateTime
-  scheduleType   ScheduleType @default(MANUAL)
-  aiConfidence   Float?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  task    Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@index([profileId, scheduledStart])
+  @@index([userId, status])
+  @@index([dueDate])
+  @@map("task")
 }
 
 model StudySession {
-  id                 String            @id @default(cuid())
-  taskId             String
-  profileId          String
-  sessionType        StudySessionType  @default(POMODORO)
-  plannedDuration    Int               // in minutes
-  actualDuration     Int?              // in minutes
-  startedAt          DateTime          @default(now())
-  completedAt        DateTime?
-  interruptions      Int               @default(0)
-  productivityRating Int?              // 1-5 scale
-  notes              String?
+  id                String   @id @default(cuid()) @map("id")
+  taskId            String
+  userId            String
+  profileId         String
+  task              Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile           Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  startedAt         DateTime
+  completedAt       DateTime?
+  pausedAt          DateTime?
+  interruptions     Json?     @map("distractions") // code expects 'interruptions'
+  totalPauseDuration Int      @default(0) // in minutes
+  plannedDuration   Int       // in minutes
+  actualDuration    Int?      // in minutes
+  productivityRating Int?     // 1-5 scale
+  focusScore        Int?     // 1-10 scale
+  sessionType       StudySessionType
+  environment       String?  // Study environment (home, library, etc.)
+  goals             String?  @db.Text
+  achievements      String?  @db.Text
+  notes             String?  @db.Text
+  mood              Int?     // 1-5 scale
+  energy           Int?      // 1-5 scale
+  comprehension    Int?      // 1-5 scale
 
-  task    Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@index([profileId, startedAt])
+  @@index([userId, startedAt])
+  @@index([taskId])
+  @@map("studysession")
 }
 
 model UserBehavior {
-  id                String   @id @default(cuid())
-  profileId         String
-  actionType        String
-  contextData       Json
-  timestamp         DateTime @default(now())
-  productivityScore Float?
+  id          String   @id @default(cuid()) @map("id")
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String
+  data        String   @db.Text
+  timestamp   DateTime @default(now()) @map("createdAt")
 
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@index([profileId, timestamp])
+  @@map("userbehavior")
 }
 
-model AiInsight {
-  id              String         @id @default(cuid())
-  profileId       String
-  insightType     AiInsightType
-  confidenceLevel Float
-  insightData     Json
-  createdAt       DateTime       @default(now())
-  expiresAt       DateTime?
+model FlashcardDeck {
+  id              String     @id @default(cuid()) @map("id")
+  name            String
+  description     String?    @db.Text
+  course          String?
+  subject         String?
+  userId          String
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cards           Flashcard[]
+  totalCards      Int        @default(0)
+  mastered        Int        @default(0)
+  learning        Int        @default(0)
+  needsReview     Int        @default(0)
+  lastReviewDate  DateTime?
+  nextReviewDate  DateTime?
+  reviewInterval  Int        @default(1) // Days between reviews
+  created         DateTime   @default(now())
+  lastModified    DateTime   @updatedAt
+  isPublic        Boolean    @default(false)
+  isArchived      Boolean    @default(false)
 
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@index([profileId, insightType])
-  @@index([profileId, createdAt])
+  @@index([userId])
+  @@index([lastReviewDate])
+  @@map("flashcarddeck")
 }
 
 model Flashcard {
-  id           String   @id @default(cuid())
-  profileId    String
-  deckName     String
-  frontContent String
-  backContent  String
-  difficulty   Int      @default(2) // SRS difficulty
-  interval     Int      @default(1) // Days until next review
-  repetitions  Int      @default(0)
-  easeFactor   Float    @default(2.5)
-  nextReview   DateTime @default(now())
+  id             String          @id @default(cuid()) @map("id")
+  front          String          @db.Text
+  back           String          @db.Text
+  hints          String?         @db.Text
+  tags           String          @db.Text  // Comma-separated tags
+  deckId         String
+  deck           FlashcardDeck   @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  profileId      String
+  profile        Profile         @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  lastReviewed   DateTime?
+  nextReview     DateTime?
+  confidence     Int?            // 1-5 scale
+  timesReviewed  Int            @default(0)
+  correctStreak  Int            @default(0)
+  easeFactor     Float          @default(2.5) // Supermemo algorithm ease factor
+  interval       Int            @default(1)    // Days until next review
+  created        DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  status         FlashcardStatus @default(NEW)
+  mediaUrl       String?         // For images or audio attachments
+
+  @@index([deckId])
+  @@index([lastReviewed])
+  @@index([nextReview])
+  @@map("flashcard")
+}
+
+model Schedule {
+  id           String   @id @default(cuid()) @map("id")
+  taskId       String
+  task         Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  profileId    String?
+  profile      Profile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  start        DateTime?
+  end          DateTime?
+  aiConfidence  Float?   @map("aiConfidence")
+  scheduleType  String?  @map("scheduleType")
+  isFlexible   Boolean  @default(false)
+  bufferBefore Int?     // Buffer time in minutes before the scheduled time
+  bufferAfter  Int?     // Buffer time in minutes after the scheduled time
+  priority     Int      @default(0)
+  status       String   @default("SCHEDULED") // SCHEDULED, COMPLETED, MISSED, RESCHEDULED
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-
-  @@index([profileId, deckName])
-  @@index([profileId, nextReview])
+  @@index([start, end])
+  @@index([taskId])
+  @@map("schedule")
 }
 
-// Enums
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
+model Calendar {
+  id               String    @id @default(cuid()) @map("id")
+  name             String
+  type             String    // "google", "local"
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  googleCalendarId String?
+  accessToken      String?   @db.Text
+  refreshToken     String?   @db.Text
+  expiresAt        DateTime?
+  syncToken        String?
+  tasks            Task[]
+  events           Event[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("calendar")
 }
 
-enum TaskType {
-  ASSIGNMENT
-  EXAM
-  PROJECT
-  READING
-  OTHER
+model Event {
+  id            String      @id @default(cuid()) @map("id")
+  title         String
+  description   String?     @db.Text
+  location      String?
+  startTime     DateTime
+  endTime       DateTime
+  isAllDay      Boolean     @default(false)
+  source        EventSource @default(LOCAL)
+  googleEventId String?
+  calendarId    String
+  calendar      Calendar    @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  attendees     Json?       // Store attendees as JSON array
+  recurrence    Json?       // Store recurrence rules as JSON
+  status        String?     // e.g., "confirmed", "tentative", "cancelled"
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([googleEventId])
+  @@index([startTime, endTime])
+  @@map("event")
 }
 
-enum ScheduleType {
-  MANUAL
-  AI_GENERATED
-  RECURRING
+model AIInsight {
+  id          String    @id @default(cuid()) @map("id")
+  profileId   String
+  profile     Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  type        String
+  data        Json
+  insightData Json?    @map("insightData")
+  expiresAt   DateTime?
+  confidence  Float     @default(0.0)
+  status      String    @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  priority    Int       @default(0)
+  appliedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("aiinsight")
 }
 
-enum StudySessionType {
-  POMODORO
-  BREAK
-  EXTENDED_FOCUS
-  REVIEW
-}
+// Note: lowercase aIInsight model alias removed to avoid duplicate model definitions.
+// Use the canonical AIInsight model for Prisma access.
+// Note: lowercase alias for study sessions removed to avoid duplicate model definitions.
+// Code references to prisma.studysession should work against the canonical StudySession model.
 
-enum AiInsightType {
-  WORKLOAD_PREDICTION
-  DEADLINE_RISK
-  PRODUCTIVITY_PATTERN
-  STUDY_RECOMMENDATION
-}
+// Note: lowercase userbehavior model alias removed. Use UserBehavior model instead.

@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { useEffect } from 'react';
 import Link from 'next/link';
-import Card from '@/components/ui/Card';
-import Button from '@/components/ui/Button';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
 interface Task {
@@ -27,9 +28,28 @@ const TASKS_MOCK: Task[] = [
     completed: true,
   },
 ];
-
 export default function TasksListPage() {
-  const [tasks, setTasks] = useState<Task[]>(TASKS_MOCK);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/tasks');
+        if (!response.ok) throw new Error('Failed to fetch tasks');
+        const data = await response.json();
+        setTasks(data.tasks || []);
+      } catch (err: any) {
+        setError(err.message || 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTasks();
+  }, []);
 
   return (
     <div className="max-w-2xl mx-auto py-8">
@@ -49,10 +69,12 @@ export default function TasksListPage() {
       </div>
 
       <div className="space-y-4">
-        {tasks.length === 0 && (
+        {loading && <div className="text-center text-lavender-500 mt-10">Loading tasks...</div>}
+        {error && <div className="text-center text-red-500 mt-10">{error}</div>}
+        {!loading && !error && tasks.length === 0 && (
           <div className="text-center text-lavender-500 mt-10">No tasks yet. Create your first task!</div>
         )}
-        {tasks.map((task) => (
+        {!loading && !error && tasks.map((task) => (
           <Link href={`/dashboard/tasks/${task.id}`} key={task.id}>
             <Card className="flex items-center justify-between hover:shadow-lg transition cursor-pointer">
               <div>

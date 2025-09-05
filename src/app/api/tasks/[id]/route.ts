@@ -1,8 +1,9 @@
 // src/app/api/tasks/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '../auth/[...nextauth]/route'
-import { prisma } from '@/lib/prisma'
+import { authOptions } from '../../auth/[...nextauth]/auth'
+import { prisma } from '@/lib/prisma';
+import { Prisma, TaskStatus } from '@prisma/client';
 import { geminiTaskParser } from '@/lib/ai/nlp/gemini-task-parser'
 
 export async function GET(request: NextRequest) {
@@ -23,20 +24,20 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const status = searchParams.get('status')
+    const status = searchParams.get('status') as TaskStatus | null
     const priority = searchParams.get('priority')
     const subject = searchParams.get('subject')
 
     const tasks = await prisma.task.findMany({
-      where: {
+      where: ({
         profileId: user.profile.id,
         ...(status && { status }),
         ...(priority && { priority: parseInt(priority) }),
         ...(subject && { subject: { contains: subject, mode: 'insensitive' } })
-      },
+      } as any),
       include: {
         schedules: true,
-        studySessions: true
+  studysessions: true
       },
       orderBy: [
         { priority: 'desc' },
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         schedules: true,
-        studySessions: true
+  studysessions: true
       }
     })
 

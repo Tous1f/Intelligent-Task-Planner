@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../auth/[...nextauth]/route';
+import { authOptions } from '../../auth/[...nextauth]/auth';
 import { prisma } from '@/lib/prisma';
+import { $Enums } from '@prisma/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,19 +11,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const profile = await prisma.profile.findUnique({
-      where: { email: session.user.email }
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: {
+        profile: true
+      }
     });
 
-    if (!profile) {
+    if (!user?.profile) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
     // Get user's tasks for analysis
     const tasks = await prisma.task.findMany({
-      where: { profileId: profile.id },
+      where: { profileId: user.profile.id },
       include: {
-        studySessions: {
+        studysessions: {
           orderBy: { startedAt: 'desc' },
           take: 10
         }
@@ -33,7 +37,7 @@ export async function GET(request: NextRequest) {
 
     // Get study sessions for productivity analysis
     const recentSessions = await prisma.studySession.findMany({
-      where: { profileId: profile.id },
+      where: { profileId: user.profile.id },
       include: { task: true },
       orderBy: { startedAt: 'desc' },
       take: 20
@@ -43,14 +47,8 @@ export async function GET(request: NextRequest) {
     const insights = generateInsights(tasks, recentSessions);
     
     // Get existing AI insights from database
-    const existingInsights = await prisma.aIInsight.findMany({
-      where: {
-        profileId: profile.id,
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gte: new Date() } }
-        ]
-      },
+  const existingInsights = await prisma.aIInsight.findMany({
+      where: { profileId: user.profile.id },
       orderBy: { createdAt: 'desc' },
       take: 10
     });
@@ -60,11 +58,10 @@ export async function GET(request: NextRequest) {
       await Promise.all(insights.map(insight => 
         prisma.aIInsight.create({
           data: {
-            profileId: profile.id,
-            insightType: insight.type,
-            confidenceLevel: insight.confidence,
-            insightData: insight,
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+            profileId: user?.profile?.id || '',
+            type: insight.type,
+            data: insight,
+            confidence: insight.confidence
           }
         })
       ));
@@ -75,12 +72,12 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ 
       success: true, 
-      insights: [...insights, ...existingInsights.map(i => i.insightData)],
+  insights: [...insights, ...existingInsights.map(i => i.data)],
       pomodoroStats,
       taskSummary: {
         total: tasks.length,
         completed: tasks.filter(t => t.status === 'COMPLETED').length,
-        pending: tasks.filter(t => t.status === 'PENDING').length,
+        pending: tasks.filter(t => t.status === 'TODO').length,
         overdue: tasks.filter(t => t.dueDate && new Date() > t.dueDate && t.status !== 'COMPLETED').length
       },
       generatedAt: new Date()
@@ -90,7 +87,7 @@ export async function GET(request: NextRequest) {
     console.error('AI insights error:', error);
     return NextResponse.json({ 
       error: 'Failed to generate insights',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
     }, { status: 500 });
   }
 }
